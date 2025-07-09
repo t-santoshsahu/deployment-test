@@ -1,0 +1,27 @@
+{{- if eq .Values.podSecurityPoliciesEnabled true }}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ .Chart.Name }}-ebpf-pod-security-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  privileged: true
+{{ if eq .Values.ebpfCaptureEnabled true }}
+  allowedCapabilities:
+{{- toYaml .Values.ebpfAllowedCapabilities | nindent 2 }}
+{{ end }}
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  volumes:
+  - '*'
+{{- end }}

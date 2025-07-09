@@ -1,0 +1,58 @@
+{{- if and (eq .Values.ingress.enabled true) (eq .Values.ebpfOnly false) }}
+{{ $v1 := semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+
+{{- if eq $v1 true }}
+apiVersion: networking.k8s.io/v1
+{{ else }}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ .Chart.Name }}-grpc
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.grpc.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- end }}
+  rules:
+    {{- $domain := .Values.ingress.domain }}
+    {{- $release := .Release }}
+    {{- $chart := .Chart }}
+  - host: opentelemetry.{{ $domain | default (printf "%s.%s.svc.cluster.local" $chart.Name $release.Namespace) }}
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            {{- if eq $v1 true }}
+            service:
+              name: agent
+              port:
+                number: {{ .Values.collector.ports.opentelemetry }}
+            {{- else }}
+            serviceName: agent
+            servicePort: {{ .Values.collector.ports.opentelemetry }}
+            {{- end }}
+  - host: agent.{{ $domain | default (printf "%s.%s.svc.cluster.local" $chart.Name $release.Namespace) }}
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            {{- if eq $v1 true }}
+            service:
+              name: agent
+              port:
+                number: {{ .Values.serverPort }}
+            {{- else }}
+            serviceName: agent
+            servicePort: {{ .Values.serverPort }}
+            {{- end }}
+{{ end }}

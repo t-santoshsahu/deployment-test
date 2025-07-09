@@ -1,0 +1,203 @@
+{{ if eq .Values.ebpfCaptureEnabled true }}
+{{- if and (ne .Values.ebpfLogLevel "debug") (ne .Values.ebpfLogLevel "info") (ne .Values.ebpfLogLevel "warn") (ne .Values.ebpfLogLevel "error") }}
+{{- fail "Value ebpfLogLevel is invalid. Allowed values are debug, info, warn, or error." }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-ebpf-config-map
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+data:
+  ebpfconfig.yaml: |
+    ## ebpf tracer config file ##
+
+{{- if .Values.ebpfEnvironment }}
+    environment: {{ .Values.ebpfEnvironment }}
+{{- end }}
+    ## set proc filesystem. ebpf-tracer needs it to get process metadata
+{{- if or .Values.ebpfEnableJavaTlsCapture (gt (len .Values.ebpfSslKeylogIncludeRules) 0) }}
+    proc_fs_path: "/proc"
+{{- else }}
+    proc_fs_path: "/hostproc"
+{{- end }}
+
+    ## sizing parameters. Memory usage depends on these queue sizes
+    perfmap_queue_size: 1024
+    probe_event_queue_size: {{ .Values.ebpfProbeEventQueueSize }}
+
+    ## capture mode, allowed values are ingress and egress
+    mode: "ingress"
+
+    # exclude processes from capturing
+    exclude_processes:
+{{- toYaml .Values.ebpfExcludeProcesses | nindent 6 }}
+
+    # uprobe attach exlusion rules
+    uprobe_attach_exclusion_rules:
+{{- toYaml .Values.ebpfUprobeAttachExclusionRules | nindent 6 }}
+
+    # ssl key log based probes inclusion rules
+    ssl_keylog_include_rules:
+{{- toYaml .Values.ebpfSslKeylogIncludeRules | nindent 6 }}
+
+    ## Maximum parallel return probe
+    max_active_ret_probe: {{ .Values.ebpfMaxActiveRetProbe }}
+
+    ## enable uprobes
+    enable_uprobes: true
+
+    ## enable tracepoints
+    enable_tracepoints: {{ .Values.ebpfEnableTracePoints }}
+
+    # limit to process requests in a second
+    request_per_second_limit: {{ .Values.ebpfRequestPerSecondLimit }}
+
+    # Max connection to track
+    max_connection: {{ .Values.ebpfMaxConnection }}
+
+    ## k8s config parameters
+    # set to true if running in k8s environment
+    k8s_enabled: true
+    # set to true to capture from all namespaces
+    capture_all_namespaces: {{ .Values.daemonSetMirrorAllNamespaces }}
+{{- if .Values.daemonSetMirroring.matchSelectors }}
+    # define custom labels to identify pods to capture
+    match_selectors:
+{{- toYaml .Values.daemonSetMirroring.matchSelectors | nindent 6 }}
+{{- end }}
+{{- if .Values.daemonSetMirroring.matchSelectorsEgress }}
+    # define custom labels to identify capture mode of pods
+    match_selectors_egress:
+{{- toYaml .Values.daemonSetMirroring.matchSelectorsEgress | nindent 6 }}
+{{- end }}
+{{- if .Values.daemonSetMirroring.matchSelectorsIngressAndEgress }}
+    # define custom labels to identify capture mode of pods
+    match_selectors_ingress_and_egress:
+{{- toYaml .Values.daemonSetMirroring.matchSelectorsIngressAndEgress | nindent 6 }}
+{{- end }}
+    service_name_labels:
+{{- toYaml .Values.ebpfServiceNameLabels | nindent 6 }}
+
+    libssl_prefixes:
+{{- toYaml .Values.ebpfLibsslPrefixes | nindent 6 }}
+
+{{- if .Values.ebpfCustomSSLAddress }}
+    # custom ssl read write address
+    custom_ssl_address:
+{{- toYaml .Values.ebpfCustomSSLAddress | nindent 6 }}
+{{- end }}
+
+    # service name
+    service_name: "{{ .Values.ebpfDefaultServiceName }}"
+    use_single_tracer: {{ .Values.ebpfUseSingleTracer }}
+    # Enable http2(including grpc) data capture
+    http2_data_capture_enabled: {{ .Values.ebpfHttp2CaptureEnabled }}
+
+    # enable capture from java tls process
+    enable_java_tls_capture: {{ .Values.ebpfEnableJavaTlsCapture }}
+
+    # Expose http server based Go Profiling
+    enable_pprof_http: {{ .Values.ebpfEnablePprofHttp }}
+    pprof_port: {{ .Values.ebpfPprofPort }}
+    proc_fs_scan_period_in_sec: {{ .Values.ebpfProcFsScanPeriodInSec }}
+    btf:
+      download_storage_path: "{{ .Values.ebpfBtfDownloadsPath }}"
+
+    # Export metrics to Traceable Platform
+    metrics_enabled: {{ .Values.ebpfMetricsEnabled }}
+
+    # Substitute of GOMEMLIMIT environment variable. Expects input in k8s units. The default value is 0,
+    # in which case no limit is set. Examples: 128974848, 129e6, 129M,  128974848000m, 123Mi
+    # ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-memory
+    go_memory_limit: "{{ include "ebpfGoMemLimit" . }}"
+
+    # Logging config for eBPF. Allowed values for level are trace, debug, info, warn and error
+    logging:
+      level: {{ include "ebpfLogLevel" . }}
+      encoding: {{ .Values.ebpfLogging.encoding }}
+      error_output_paths:
+{{- toYaml .Values.ebpfLogging.error_output_paths | nindent 8 }}
+
+    # k8s watch api selectors
+    watch_selectors:
+      enabled: {{ .Values.ebpfWatchMatchSelectors.enabled }}
+{{- if .Values.ebpfWatchMatchSelectors.podsSelectors }}
+      # Pods watch api match selector. Only label and field selectors will be honored. The k8s API does not support
+      # annotation selectors. See https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListOptions
+      pods_selectors:
+{{- toYaml .Values.ebpfWatchMatchSelectors.podsSelectors | nindent 8 }}
+{{- end }}
+{{- if .Values.ebpfWatchMatchSelectors.namespacesSelectors }}
+      # Namespaces watch api match selector. Only label and field selectors will be honored. The k8s API does not support
+      # annotation selectors. See https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListOptions
+      namespaces_selectors:
+{{- toYaml .Values.ebpfWatchMatchSelectors.namespacesSelectors | nindent 8 }}
+{{- end }}
+
+{{- if .Values.ebpfPodLabels }}
+    pod_labels:
+{{- toYaml .Values.ebpfPodLabels | nindent 6 }}
+{{- end }}
+
+{{- if .Values.ebpfPodAnnotations }}
+    pod_annotations:
+{{- toYaml .Values.ebpfPodAnnotations | nindent 6 }}
+{{- end }}
+
+{{- if .Values.ebpfCustomSpanAttributes }}
+    custom_span_attributes:
+{{- range $key, $value := .Values.ebpfCustomSpanAttributes }}
+      {{ $key | quote }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+
+    # goagent config parameters
+    agent_config:
+      ## enable sampling
+      sampling: {{ .Values.samplingEnabled }}
+      ## if client needs to use tls
+      secure: {{ include "ebpfToTpaTlsEnabled" . }}
+      ## path of the ca certificate file
+      ca_cert_file: "{{ include "tpaTlsCaCertForClientsFileName" . }}"
+      reporting:
+        endpoint: {{ include "ebpfReportingEndpoint" . }}
+        trace_reporter_type: "{{ .Values.ebpfTraceReporterType }}"
+      data_capture:
+        body_max_size_bytes: {{ .Values.maxBodySize }}
+        allowed_content_types:
+{{- range $_, $value := .Values.allowedContentTypes }}
+          - {{ $value }}
+{{- end }}
+      # remote config
+      remote:
+        endpoint: {{ include "ebpfRemoteEndpoint" . }}
+        poll_period_seconds: {{ .Values.remoteConfigPollPeriod }}
+        grpc_max_call_recv_msg_size: {{ .Values.remoteConfigGrpcMaxCallRecvMsgSize }}
+      # default rate limit config
+      default_rate_limit_config:
+        enabled: {{ .Values.ebpfDefaultRateLimitConfig.enabled }}
+        max_count_global: {{ .Values.ebpfDefaultRateLimitConfig.maxCountGlobal }}
+        max_count_per_endpoint: {{ .Values.ebpfDefaultRateLimitConfig.maxCountPerEndpoint }}
+        refresh_period: "{{ .Values.ebpfDefaultRateLimitConfig.refreshPeriod }}"
+        value_expiration_period: "{{ .Values.ebpfDefaultRateLimitConfig.valueExpirationPeriod }}"
+        span_type: {{ .Values.ebpfDefaultRateLimitConfig.spanType }}
+      use_custom_bsp: {{ .Values.ebpfUseCustomBsp }}
+      logging:
+        log_mode: LOG_MODE_STDOUT
+        log_level: {{ .Values.ebpfFilterLogLevel }}
+      metrics_config:
+        enabled: {{ .Values.ebpfFilterMetricsConfig.enabled }}
+        endpoint_config:
+          enabled: {{ .Values.ebpfFilterMetricsConfig.endpointConfig.enabled }}
+          max_endpoints: {{ .Values.ebpfFilterMetricsConfig.endpointConfig.maxEndpoints }}
+          logging:
+            enabled: {{ .Values.ebpfFilterMetricsConfig.endpointConfig.logging.enabled }}
+            frequency: {{ .Values.ebpfFilterMetricsConfig.endpointConfig.logging.frequency }}
+        logging:
+          enabled: {{ .Values.ebpfFilterMetricsConfig.logging.enabled }}
+          frequency: {{ .Values.ebpfFilterMetricsConfig.logging.frequency }}
+{{- end }}

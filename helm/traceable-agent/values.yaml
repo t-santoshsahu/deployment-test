@@ -1,0 +1,1322 @@
+# The api token required to communicate with the api.traceable.ai platform.
+# See https://docs.traceable.ai on how to obtain an access token
+token: ""
+
+# Configs for services enabled
+collectorEnabled: true
+agentManagerEnabled: true
+extCapEnabled: true
+injectorEnabled: true
+
+logLevel: info
+# Set this to json or console.
+logEncoding: json
+
+logLevelInternal: LOG_LEVEL_INFO
+
+# Environment name attribute
+environment: ""
+
+# Cluster name the TPA is deployed in
+clusterName: ""
+
+# Persistence Volume Claim name
+persistencePvcName: ""
+
+# Modsecurity enabled
+modsecurityEnabled: true
+
+# Body evaluation enabled
+evaluateBody: true
+
+# Skip blocking evaluation for internal request
+skipInternalRequest: true
+
+# Region Blocking enabled
+regionBlockingEnabled: true
+
+# Status code sent when request is blocked, must be a valid status code > 400
+# see: https://github.com/envoyproxy/go-control-plane/blob/c9f25a22c1936dd2b5cd73fa408dcf8a27be41fc/envoy/type/http_status.pb.go#L52-L88
+blockingStatusCode: 403
+# Body content sent when request is blocked
+blockingMessage: Access Forbidden
+
+# Remote Config
+remoteConfigEnabled: true
+remoteConfigPollPeriod: 30
+# Max receive message size(bytes) for grpc channel
+# 33554432 = 32 * 1024 * 1024 = 32MB
+remoteConfigGrpcMaxCallRecvMsgSize: 33554432
+
+# Blocking enabled
+blockingEnabled: true
+
+# sampling enabled
+samplingEnabled: true
+
+# Traceable.ai API endpoint
+endpoint: api.traceable.ai
+# Port to communication to `endpoint`
+endpointPort: 443
+# Communication to `endpoint` over TLS
+secure: true
+
+# TLS enabled for all TPA endpoints
+tlsEnabled: false
+
+additionalCertAltNames: []
+
+# Add additional annotations to TPA/eBPF deployment
+additionalAnnotations:
+  data-ingest.dynatrace.com/inject: "false"
+  dynakube.dynatrace.com/inject: "false"
+  oneagent.dynatrace.com/inject: "false"
+  dynatrace.com/inject: "false"
+
+# Labels added to all traceable resources
+additionalGlobalLabels:
+
+# Annotations added to all traceable resources
+additionalGlobalAnnotations:
+
+# traceable-agent service account name
+serviceAccountName: traceable-agent-service-account
+
+# Refresh token file path
+refreshTokenFile: ""
+
+# GCP project name where the TPA token is stored inside the secret manager
+refreshTokenGcpSecretProject: ""
+
+# GCP secret name where the TPA token is stored
+refreshTokenGcpSecretName: ""
+
+# GCP service account assigned to Kubernetes node pool that will host TPA.
+# This service account needs to exist in GCP and should have permissions to access the secret.
+gkeServiceAccount: ""
+
+# Https proxy value. If using a proxy for outgoing traffic to the platform set this
+# to the proxy endpoint(scheme, host and port if necessary eg. https://proxy.mycorp.com:8787).
+httpsProxy: ""
+
+# http proxy value. In case the http proxy needs to be set but since TPA -> platform traffic we prefer
+# https_proxy instead of http_proxy
+httpProxy: ""
+
+# no proxy value. Set this to exclude IPs and hosts from having the traffic to them routed via the http
+# or https proxy. We exclude local traffic by default.
+noProxy: "localhost,127.0.0.1"
+
+# We allow you to bring your own certificates when deploying TA. You can bring them in as a
+# secret in the same namespace as the TA deployment or as files somehow injected into the container.
+#
+# Make sure that all the fields are populated so they can take effect. Otherwise we will switch to
+# self generated certificates which is also the default.
+#
+# tlsPrivateCertificatesAsFiles has the highest priority, followed by tlsPrivateCertificatesAsSecret.
+#
+# If you need to do injection with your own certificates, please set injector.caBundle with the
+# base64 encoded value of your root CA cert that you used to sign your certs. Otherwise we will assume
+# that you signed your certificates using the k8s api server root certs.
+#
+# External private certificates as a secret. Note that the secret should be in the same namespace
+# as your TA deployment.
+tlsPrivateCertificatesAsSecret:
+  secretName: ""
+  # These filenames should be the keys in the secret.
+  rootCAFileName: ""
+  certFileName: ""
+  keyFileName: ""
+
+# External private certificates as files injected into the TA container
+tlsPrivateCertificatesAsFiles:
+  # These filenames should be absolute file paths
+  rootCAFileName: ""
+  certFileName: ""
+  keyFileName: ""
+
+# Base64 encoded certificate files as direct inputs
+tlsPrivateCertificatesAsString:
+  rootCAB64: ""
+  certB64: ""
+  keyB64: ""
+
+# Custom CA cert for traceable-agent(TA) to platform connections.
+# This is usually needed for on-premise deployments of the platform where the
+# endpoint is not a public HTTPS endpoint and so is not signed by the
+# root CAs. The customer would need to provide a CA cert file verify the platform
+# endpoint server certificate. We provide several ways to configure this.
+#
+# You should only specify one of these config modes but if you have multiple specified
+# remoteCaBundle is the highest priority followed by remoteCaCertSecret and lastly remoteCaCertFile.
+#
+#
+# CA Bundle which is the base64 encoding of CA cert file contents.
+remoteCaBundle: ""
+
+# CA as a secret in the same namespace as the TA deployment
+remoteCaCertSecret:
+  secretName: ""
+  caCertFileName: ""
+
+# CA as a file injected into the TA container. This should be the absolute path to the file.
+remoteCaCertFile: ""
+
+# For mTLS between TPA and platform clients need to specify client cert and key. For ca use the remoteCaCert fields from above.
+# Use this mTLS option if you want to provide the base64 encoded values in values.yaml
+remoteClientCert: ""
+remoteClientKey: ""
+
+# Use this mTLS option if you want to provide the base64 encoded values as part of a secret. The secret should specify both the cert & the key
+remoteClientCertKeySecret:
+  secretName: ""
+  clientCertName: ""
+  clientKeyName: ""
+
+# client cert/key that should either be added to container. This should be absolute path to the file
+remoteClientCertFile: ""
+remoteClientKeyFile: ""
+
+# maximum number of agent tokens tracked by the agent, for internal use only
+remoteMaxTokens: 1
+
+
+# Max receive message size(bytes) for grpc channel
+# 33554432 = 32 * 1024 * 1024 = 32MB
+grpcMaxCallRecvMsgSize: 33554432
+
+additionalTracePreprocessorPipeline: []
+additionalTraceInternalSpanProcessors: []
+
+# Container cpu and memory resource allocation
+resources:
+  limits:
+    cpu: 1
+    memory: 2Gi
+  requests:
+    cpu: 200m
+    memory: 400Mi
+
+# Tolerations are configured on a pod to allow it to be scheduled on nodes with the corresponding
+# taints. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+# Example tolerations config:
+#
+# tolerations:
+#   - key: "key1"
+#     operator: "Equal"
+#     value: "value1"
+#     effect: "NoSchedule"
+#   - key: "key1"
+#     operator: "Equal"
+#     value: "value1"
+#     effect: "NoExecute"
+# Set the tolerations here for Traceable Agent pod.
+tolerations: []
+
+# protoprocessor. If you want to disable this you have to set to nil i.e
+#
+# protoprocessor:
+#
+# protoprocessor: {} does not work since it merges this empty yaml block with the
+# existing one below and the processor is still enabled.
+protoprocessor:
+  strip_encoded_attribute: true
+
+base64DecoderProcessor:
+  strip_encoded_attribute: true
+
+ipResolutionProcessor:
+  cache_duration_minutes: 10
+  cache_cleanup_interval_minutes: 10
+  max_ip_queue_size: 10000
+  max_resolution_time_ms: 1000
+
+# Create collector k8s services
+individualK8sServicesEnabled: false
+
+# Collector processors which get configuration from remote
+remoteConfiguredProcessors:
+  - "traceable_dataparser"
+  - "traceable_attributes"
+  - "traceable_modsec"
+  - "traceable_dataclassification"
+  - "traceable_spanremover"
+
+imageName: traceable-agent
+imagePullPolicy: IfNotPresent
+
+# Credentials for the docker images
+# if a custom registry or registry suffix are used, make sure you also include the necessary username & password.
+imageCredentials:
+  registry: docker.io
+  registrySuffix: traceableai
+  username: ""
+  password: ""
+
+# Custom image pull secret name. Should exist in the same namespace that traceable-agent deployment will
+# run in.
+imagePullSecretName: ""
+
+# Externally defined token secret
+externalTokenSecret:
+  name: ""
+  key: ""
+
+# Whether to run as a daemonset or deployment
+runAsDaemonSet: false
+
+labels: {}
+
+# Set serviceType to "Headless" to launch a Headless k8s service; will use "clusterIP: None".
+# Headless service is required for traffic to TPA to be load-balanced when TPA is auto-scaled.
+serviceType: ClusterIP
+
+# Load balancer IP value to use when serviceType is "LoadBalancer". If not specified, an ephemeral IP will be created.
+# See https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer.
+# Note: loadBalancerIP is deprecated as of k8s v1.24. It is also not supported by all cloud providers. Users are encouraged to use implementation-specific annotations when available.
+# See documentation at https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/#ServiceSpec.
+loadBalancerIP: ""
+
+# Service labels and annotations
+serviceLabels: {}
+serviceAnnotations: {}
+
+# https-agent LB service ports used to configure different service and target ports when LB is enabled.
+loadBalancerHttpsAgentService:
+  enabled: false
+  port: 0
+  targetPort: 0
+
+
+# k8s service externalTrafficPolicy
+# From k8s service api reference https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/:
+# externalTrafficPolicy describes how nodes distribute service traffic they receive on one of the Service's "externally-facing" addresses (NodePorts, ExternalIPs, and LoadBalancer IPs).
+# If set to "Local", the proxy will configure the service in a way that assumes that external load balancers will take care of balancing the service traffic between nodes, and so each
+# node will deliver traffic only to the node-local endpoints of the service, without masquerading the client source IP. (Traffic mistakenly sent to a node with no endpoints will be dropped.)
+# The default value, "Cluster", uses the standard behavior of routing to all endpoints evenly (possibly modified by topology and other features). Note that traffic sent to an External IP or
+# LoadBalancer IP from within the cluster will always get "Cluster" semantics, but clients sending to a NodePort from within the cluster may need to take traffic policy into account when picking a node.
+#
+# You can set it to "Local" or "Cluster". When not set, the default value is "Cluster".
+serviceExternalTrafficPolicy: ""
+
+ingress:
+  enabled: false
+  domain: ""
+  # In newer k8s versions it replaces `kubernetes.io/ingress.class` annotation which has been deprecated.
+  ingressClassName: ""
+  http:
+    annotations: {}
+  grpc:
+    annotations: {}
+
+# Traceable agent server ports
+serverPort: 5441
+serverPortMaxConnectionAge: 9223372036854775807ns
+
+restServerPort: 5442
+tlsServerPort: 5443
+
+restServerNodePort: 0
+tlsServerNodePort: 0
+
+singleServiceMode: false
+
+restServerIdleTimeout: 60
+restServerDisableKeepAlive: false
+tlsServerIdleTimeout: 60
+tlsServerDisableKeepAlive: false
+
+injectorTmeRestServerIdleTimeout: 60
+injectorTmeRestServerDisableKeepAlive: false
+# Host/IP and port or domain. Do not add the scheme since it is assumed to be "https". The eventual form is: https://{{ .Values.injectorWebhookDomain }}/path/to/injector
+# eg. injector.example.com:443, injector.example.com
+injectorWebhookDomain: ""
+
+httpReverseProxyEnabled: true
+
+pprofServer:
+  enabled: true
+  endpoint: "127.0.0.1:1777"
+
+
+hslServer:
+  enabled: false
+  port: 8443
+  keyFile: ""
+  certFile: ""
+  maxQueueSize: 1000
+  bufferSize: 4096
+  delimiter: "__"
+
+apigeeServer:
+  enabled: false
+  messageEndToken: "__SPAN_END__"
+  server:
+    port: 8444
+    keyFile: ""
+    certFile: ""
+    maxQueueSize: 1000
+    bufferSize: 4096
+
+# Ability to create multiple services for the different ports opened by TPA.
+# We will beging with hsl and apigee listeners.
+# A separate service could be needed in case we need to have a different k8s service types
+# for the different services.
+multipleServices:
+  enabled: false
+  apigee:
+    serviceType: ClusterIP
+    nodePort: 0
+  hsl:
+    serviceType: ClusterIP
+    nodePort: 0
+
+# Default service name for the spans created by the External Capture service.
+extCapServiceName: ext_cap
+
+# Default otlp address
+telemetryReportingEndpoint: ""
+
+# max body size to capture
+maxBodySize: 131072
+
+# max spans level in a trace, 1 means only root span
+maxSpanDepth: 2
+
+# Timeout in milliseconds; set to 0 to disable the timeout.
+extCapTimeoutMs: 0
+
+allowedContentTypes: ["json", "x-www-form-urlencoded", "xml", "graphql"]
+
+# metrics(custom otlp metrics for TA)
+metrics:
+  enabled: true
+
+# Whether internal tracing should capture data
+telemetryDataCapture: false
+
+# Telemetry internal spans config
+internalSpans:
+  enabled: true
+  # Send TA logs as span events.
+  logsAsSpanEvents: true
+  logsSpanTickerPeriod: 5
+  logsQueueSize: 2048
+
+# OTLP Exporter Persistent Queue Enabled
+persistentQueueEnabled: true
+
+# Openshift SCC
+openshiftSCC: false
+
+collector:
+  ports:
+    opentelemetry: 4317
+    opentelemetryHttp: 4318
+    zipkin: 9411
+    prometheus: 8889
+    prometheus_receiver: 8888
+    health_check: 13133
+  additionalProcessors: {}
+  additionalExporters: {}
+  additionalPipelines: {}
+  service:
+    pipelines:
+      traces:
+        # The quotes are important for this to be rendered in the config map as an array.
+        # An example: exporters: "[otlp, otlp/2, debug]"
+        exporters: "[otlp]"
+      metrics:
+        exporters: "[otlp]"
+  batch:
+    timeout: 200ms
+    sendBatchSize: 8192
+    sendBatchMaxSize: 10000
+  receivers:
+    zipkin:
+      enabled: true
+    otlp:
+      enabled: true
+      maxRecvMsgSizeMib: 16
+      # Can be expressed as duration string, ex: 120s = 120 seconds, 120m = 120 minutes, 2h = 2 hours
+      # ref: https://pkg.go.dev/time#example-ParseDuration
+      maxConnectionAge: 1m
+  exporters:
+    otlp:
+      compression: "gzip"
+    prometheus:
+      enabled: true
+  # Regex Match Memoization cache. When configuring size note that it is equal to no. of regex based data classification
+  # match rules * no. of flattened attribute parameters passing through the data classification processor. Flatenned
+  # parameters depends on the attribute type. For headers, it's just the header name. For JSON based attributes like
+  # bodies, it's the JSON map keys. For URL encoded attributes it's the individual parameters.
+  # Note that the memory consumed by this is bounded by the size.
+  regexMatchCache:
+    enabled: true
+    size: 500000
+  # Negative Match Memoization Cache. This will cache parameters that fail to match all data type match rules. We save on the
+  # cost of computing that result for the parameters over and over again. We split up the parameter caches based on their attribute
+  # locations and this way each parameters cache size can be configured separately.
+  # Note that when we say "fail to match all data type match rules", we mean all match rules that have empty span filters. Match rules
+  # with non-empty span filters that depend on other attribute key-value matches will still be evaluated.
+  negativeMatchCache:
+    enabled: true
+    bodyParamsCacheSize: 2000000
+    queryParamsCacheSize: 20000
+    headersCacheSize: 400000
+    cookiesCacheSize: 400000
+    othersCacheSize: 20000
+  # For multipart content-type request and response bodies, multipartMaxFileSize limits the number of a file's first bytes that are captured.
+  # The rest of the file is truncated. Note that currently we do not capture binary(with non utf8 bytes) files. We replace the content of
+  # the files with [binary data].
+  multipartMaxFileSize: 2048
+  skipSettingGrpcLogger: true
+  # Max receive message size(bytes) for collector service grpc channel to agent-manager
+  # 33554432 = 32 * 1024 * 1024 = 32MB
+  grpcMaxCallRecvMsgSize: 33554432
+
+# Replica count for the deployment
+deploymentReplicaCount: 1
+
+# Whether to define cluster roles and bindings tied to the service account
+clusterRolesEnabled: true
+
+# Enable if pod security policies are required. Note that this was deprecated in k8s v1.21 and removed in v1.25.
+# https://kubernetes.io/docs/concepts/security/pod-security-policy/
+podSecurityPoliciesEnabled: false
+
+# Used for the generate of kubernetes manifests.
+# should never be true for helm based installations
+k8sManifests: false
+
+# Used for enabling k8sattributesprocessor in collector
+k8sProcessorEnabled: false
+
+# Used for enabling servicenamerprocessor in collector
+serviceNamerProcessorEnabled: false
+
+# span remover processor config
+# It removes a span based on API Discovery Exclusions configuration from the platform.
+#
+# If you want to use local configuration, you should remove "traceable_spanremover" from the "remoteConfiguredProcessors"
+# config above and then define a configuration. An example of configuration:
+#
+#  spanRemoverProcessor:
+#    service_exclude_span_processing_rules:
+#      - service_name: service1
+#        exclude_span_processing_rules:
+#          - id: id1 # optional
+#            filter:
+#             relational_filter:
+#               span_attribute_key: http.request.header.user-agent
+#               operator: inq
+#               right_operand:
+#                 list_value:
+#                   - string_value: GoogleHC/1.0
+#                     type: string_value
+#                   - string_value: kube-probe/1.20
+#                     type: string_value
+#                   - string_value: kube-probe/1.21
+#                     type: string_value
+#                   - string_value: ELB-HealthChecker
+#                     type: string_value
+#                 type: list_value
+#             type: relational_span_filter
+#          - filter:
+#             relational_filter:
+#               span_attribute_key: traceableai.span_type
+#               operator: equals
+#               right_operand:
+#                 string_value: nospan
+#                 type: string_value
+#             type: relational_span_filter
+
+# Relational operators supported are: "equals", "not_equals", "contains", "starts_with", "ends_with", "regex_match" and "in".
+# For the "in" operator, only lists are allowed.
+#
+spanRemoverProcessor:
+  service_exclude_span_processing_rules: []
+# bare span converter processor
+# Converts span with traceableai.span_type=barespan by
+# removing request response header and body attributes
+# as configured.
+bareSpanConverterProcessor:
+  header_prefixes:
+    - http.request.header.
+    - http.response.header.
+    - rpc.request.metadata.
+    - rpc.response.metadata.
+  body_prefixes:
+    - http.request.body
+    - http.response.body
+    - rpc.request.body
+    - rpc.response.body
+  header_names_to_keep:
+    - x-real-ip
+    - forwarded
+    - x-forwarded-for
+    - x-proxyuser-ip
+    - :authority
+    - grpc-status
+    - :status
+    - :path
+    - content-length
+    - content-type
+    - host
+    - user-agent
+
+# traceable_traces_buffer processor config
+# This processor buffers incoming traces sent by tracing agent and puts them on a queue for asynchronous processing which
+# enables the receivers to return quickly to caller tracing agents and avoid silent span drops in the tracing agents.
+tracesBufferingProcessorEnabled: true
+tracesBufferingProcessor:
+  # When this is full, spans are dropped but unlike the silent drop in the tracing agents, there's a log message
+  # and metrics to indicate this. This is directly related to memory. Increasing its value, in high ingested span throughput
+  # environments could lead to memory increase and eventually OOMKilled if the limit is reached.
+  # When this happens increase the noOfWorkers config below and CPUs allocated to the pod.
+  bufferCapacity: 10
+  # When this is set to 0 it will default to max(2, resources.cpu.limit). Set it to non-zero to override.
+  # It is recommended that it is >= 2.
+  noOfWorkers: 0
+  # Set this to true to also send the overflowing spans instead of dropping them. With the defaut value of this as false,
+  # spans that cannot be queued up in the buffer are dropped. If set to true, it means no spans are dropped in this processor
+  # and would then be dropped in caller tracing agent.
+  sendBufferOverFlowSpans: false
+
+# opentelemetry-go http and grpc instrumentation send duration and content length metrics
+# which end up filling up the memory of the collector and prometheus servers. For example,
+# a duration metric object is created for each request which in a high load scenario will
+# produce loads of metric objects. This processor filters them out.
+#
+# To disable this processor, set:
+# names: []
+#
+metricsRemoverProcessor:
+  match_type: regexp
+  names:
+    - ^http\.server.*
+    - ^http\.client.*
+    - ^rpc\.server.*
+    - ^rpc\.client.*
+    - .*db.*
+    - .*jvm.*
+    - .*kafka.*
+    - processedSpans
+    - queueSize
+    - ^otlp.*
+
+filterInternalSpansProcessor:
+  error_mode: ignore
+  traces:
+    span:
+      - 'resource.attributes["deployment.environment"] != "traceableai-internal"'
+filterExternalSpansProcessor:
+  error_mode: ignore
+  traces:
+    span:
+      - 'resource.attributes["deployment.environment"] == "traceableai-internal"'
+#
+# A note on injector.caBundle
+# injector.caBundle may need to be specified when using tlsPrivateCertificatesAsSecret or
+# tlsPrivateCertificatesAsFiles. It's not needed for self generated mode i.e where internal
+# helm generated certificates are used.(the default)
+#
+injector:
+  failurePolicy: Ignore
+  # Set this to the reporter trace type you want for the injectees: OTLP or ZIPKIN.
+  traceReporterType: OTLP
+  servicenameWithNamespace: false
+  reportingEndpoint: ""
+  enableGrpcLoadbalancing: true
+  blockingConfig:
+    enabled: true
+    modsecurity:
+      enabled: true
+    evaluate_body: true
+    skip_internal_request: true
+    # Status code sent when request is blocked, must be a valid status code > 400
+    # see: https://github.com/envoyproxy/go-control-plane/blob/c9f25a22c1936dd2b5cd73fa408dcf8a27be41fc/envoy/type/http_status.pb.go#L52-L88
+    blockingStatusCode: 403
+    blockingContentType: ""
+    # Body content sent when request is blocked
+    blockingMessage: Access Forbidden
+    region_blocking:
+      enabled: true
+    edge_decision_service:
+        enabled: false
+        endpoint: localhost:62060
+        timeoutMs: 20
+        includePathRegexes: []
+        excludePathRegexes: []
+    evaluateEdsFirst: false
+
+  remoteConfig:
+    enabled: true
+    poll_period_seconds: 30
+    # Max receive message size(bytes) for grpc channel
+    # 33554432 = 32 * 1024 * 1024 = 32MB
+    grpc_max_call_recv_msg_size: 33554432
+  debugLog: false
+  sampling:
+    enabled: true
+  logLevel: info
+  metricsConfig:
+    enabled: false
+    maxQueueSize: 9216
+    endpointConfig:
+      enabled: false
+      maxEndpoints: 5000
+      logging:
+        enabled: true
+        frequency: 30m
+    logging:
+      enabled: true
+      frequency: 30m
+    exporter:
+      enabled: false
+      exportIntervalMs: 60000
+      exportTimeoutMs: 30000
+  
+  botServiceConfig:
+    enabled: false
+    endpoint: http://localhost:63050/traceable/captcha/tpa_request
+    timeoutMs: 30
+    includePathPrefixes:
+      - /traceable/captcha
+  parserConfig:
+    maxBodySize: 131072 # 128 * 1024 -> 128KB
+    graphql:
+      enabled: false
+  # trace context format
+  # valid values: TRACECONTEXT, B3
+  propagationFormats:
+    - TRACECONTEXT
+  # used by deprecated proxy
+  captureContentType:
+    - json
+    - grpc
+    - x-www-form-urlencoded
+    - xml
+  # caBundle is a base64 encoded root cert file contents string that is used to verify the cert file that the injector presents
+  # to the mutating webhook configuration. It's usually empty if we are in self_gen certs mode, but if you want to
+  # bring your own certs, then you need to pass in the base64 encoded root cert file contents. If you do not, and you are not
+  # in self_gen mode, then the mutating webhook configuration uses the k8s api server system root certs for verification.
+  caBundle: ""
+  # pprof normally runs via collector, if collector is disabled in injected TME we should enable this to gather TME perf data
+  pprofServer:
+    enabled: true
+    endpoint: "127.0.0.1:1777"
+  java:
+    imageVersion: 1.1.15
+    imageName: javaagent
+    initContainerResources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
+    matchSelectors: []
+    filterImpl: LIBTRACEABLE
+  nginx:
+    imageVersion:
+    imageName: nginx-lua-plugin
+    initContainerResources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
+    matchSelectors: []
+    configMapName: ""
+    containerName: ""
+  nginxCpp:
+    agentVersion: 0.1.91
+    imageVersion: ""
+    imageName: nginx-cpp-module
+    configMapName: ""
+    containerName: ""
+    initContainerResources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
+    matchSelectors: []
+    config:
+      # make sure to add quotes around any value which resolves to on/off. Otherwise, they'll be converted to true/false
+      # ref: https://github.com/helm/helm/issues/5497
+      serviceName: "ingress-nginx"
+      configPollPeriodSeconds: 30
+      blocking: "on"
+      blockingStatusCode: 403
+      blockingSkipInternalRequest: "on"
+      sampling: "on"
+      logLevel: "LOG_LEVEL_INFO"
+      metrics: "off"
+      metricsLog: "off"
+      metricsLogFrequency: 30m
+      endpointMetrics: "off"
+      endpointMetricsLog: "off"
+      endpointMetricsLogFrequency: "30m"
+      endpointMetricsMaxEndpoints: 5000
+      captureContentTypes:
+        - json
+        - grpc
+        - xml
+  tme:
+    # Will leave this as an override version so if someone wants to inject a different traceable-agent version from the injector's version
+    imageVersion:
+    imageName: traceable-agent
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    disableOutboundPortExcludeAnno: false
+    matchSelectors: []
+  mirror:
+    imageVersion: 2.0.3
+    imageName: packet-forwarder
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    mtu: 1500
+    matchSelectors: []
+    matchSelectorsEgress: []
+    matchSelectorsIngressAndEgress: []
+  haproxy:
+    imageVersion:
+    imageName: haproxy-init
+    initContainerResources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
+    port: 5444
+    matchSelectors: []
+    closeServerOnConnectionError: false
+  wasm:
+    imageVersion:
+    imageName: wasm-init
+  extProc:
+    # Body processing mode set at the ext_proc server level.
+    requestBodyProcessingMode: "BODY_SEND_MODE_BUFFERED_PARTIAL"
+    responseBodyProcessingMode: "BODY_SEND_MODE_BUFFERED_PARTIAL"
+    websocketParserConfig:
+      enabled: false
+
+#pod mirroring
+podMirroringEnabled: false
+
+# DaemonSet Mirroring config - used when runAsDaemonSet is set
+daemonSetMirroringEnabled: false
+daemonSetMirrorAllNamespaces: false
+ebpfCaptureEnabled: false
+ebpfLogLevel: info
+ebpfRunAsPrivileged: false
+ebpfSELinuxOptionsEnabled: false
+ebpfSELinuxOptionsRole: "system_r"
+ebpfSELinuxOptionsType: "spc_t"
+ebpfSELinuxOptionsUser: "system_u"
+ebpfOpenshiftSCC: false
+ebpfUnixDomainSocketQueueSize: 10000
+ebpfMaxActiveRetProbe: 1
+ebpfDeployOnMaster: false
+ebpfNodeAffinityMatchExpressions:
+  - matchExpressions: []
+# Set this to the reporter trace type you want for ebpf: OTLP or ZIPKIN.
+ebpfTraceReporterType: OTLP
+# Set this configuration to attach uprobes on SSL addresses
+ebpfCustomSSLAddress: []
+# Tolerations are configured on a pod to allow it to be scheduled on nodes with the corresponding
+# taints. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+# Set the tolerations here for eBPF pod.
+ebpfTolerations: []
+# Node selectors used for ebpf deployment
+#
+# Example config:
+# ebpfNodeSelectors:
+#   kubernetes.io/arch: amd64
+ebpfNodeSelectors: {}
+
+# Environment name attribute for ebpf agent, overrides environment configured at TPA
+ebpfEnvironment: ""
+ebpfDefaultServiceName: ebpf
+ebpfUseSingleTracer: false
+ebpfServiceNameLabels: []
+# Configure pod labels keys to capture as span attributes.
+ebpfPodLabels: []
+# Configure pod annotations keys to capture as span attributes.
+ebpfPodAnnotations: []
+ebpfHttp2CaptureEnabled: false
+ebpfMetricsEnabled: true
+ebpfEnablePprofHttp: true
+ebpfPprofPort: 1778
+ebpfEnableJavaTlsCapture: false
+ebpfLibsslPrefixes: ["libssl.so", "libssl3.so"]
+ebpfEnableGoMemoryLimit: true
+ebpfProbeEventQueueSize: 50000
+ebpfExcludeProcesses: []
+ebpfRequestPerSecondLimit: 1000
+ebpfMaxConnection: 10000
+ebpfEnableTracePoints: false
+ebpfBtfDownloadsPath: "/etc/traceable/ebpf-tracer/btf/downloads"
+# ebpf tracer service account name
+ebpfServiceAccountName: traceable-agent-ebpf-service-account
+ebpfOpenshiftSccConfig:
+  allowPrivilegeEscalation: false
+  allowHostDirVolumePlugin: true
+  allowHostIPC: true
+  allowHostNetwork: true
+  allowHostPorts: true
+  readOnlyRootFilesystem: false
+  requiredDropCapabilities:
+    - DAC_READ_SEARCH
+    - LINUX_IMMUTABLE
+    - NET_BROADCAST
+    - NET_ADMIN
+    - NET_RAW
+    - IPC_OWNER
+    - SYS_MODULE
+    - SYS_RAWIO
+    - SYS_PACCT
+    - SYS_BOOT
+    - SYS_NICE
+    - SYS_TIME
+    - SYS_TTY_CONFIG
+    - MKNOD
+    - LEASE
+    - AUDIT_WRITE
+    - AUDIT_CONTROL
+    - MAC_OVERRIDE
+    - MAC_ADMIN
+    - SYSLOG
+    - WAKE_ALARM
+    - BLOCK_SUSPEND
+    - AUDIT_READ
+    - PERFMON
+    - BPF
+
+ebpfLogging:
+  encoding: "json"
+  output_paths:
+    - stdout
+  error_output_paths:
+    - stderr
+
+ebpfDefaultRateLimitConfig:
+  enabled: false
+  maxCountGlobal: 0
+  maxCountPerEndpoint: 0
+  # Accepted values are in the form of 1s, 2m, 3h. The Default value is 30m
+  refreshPeriod: "1m"
+  # Accepted values are in the form of 1s, 2m, 3h. The Default value is 30m
+  valueExpirationPeriod: "168h"
+  spanType: SPAN_TYPE_NO_SPAN
+
+# Log level for Traceable Filter
+ebpfFilterLogLevel: LOG_LEVEL_INFO
+
+# Configuration for Metrics from Traceable Filter
+ebpfFilterMetricsConfig:
+  enabled: false
+  endpointConfig:
+    enabled: false
+    maxEndpoints: 5000
+    logging:
+      enabled: true
+      frequency: 30m
+  logging:
+    enabled: true
+    frequency: 30m
+
+## uprobe attach exclusion rules
+#
+# Configure these rules to exclude process from uprobe attach. For Java processes,
+# you cannot attach uprobes so these rules will be applied to exclude them from jattach
+# and attaching the java tls agent.
+#
+# "exec_name" in the config will be a suffix match on the process executable
+#
+# Example with several sample configurations.
+#
+# ebpfUprobeAttachExclusionRules:
+#   # Exclude java processes with the arg "-Dcom.ibm.tools.attach.enable=no"
+#   - exec_name: java
+#     cmdline_args:
+#       - "-Dcom.ibm.tools.attach.enable=no"
+#   # Exclude java processes with the arg that matches the regex "-Dcom\.ibm*"
+#   - exec_name: java
+#     cmdline_args:
+#       - "regex:-Dcom\.ibm*"
+#   # Exclude java processes with the arg that matches the regex "-Dcom\.ibm*" OR have "app123.jar" arg.
+#   - exec_name: java
+#     cmdline_args:
+#       - "regex:-Dcom\.ibm*"
+#       - "app123.jar"
+#   # Exclude java processes with the arg that matches the regex "-Dcom\.ibm*" AND have "app123.jar" arg.
+#   - exec_name: java
+#     cmdline_args_match_type: MATCH_ALL
+#     cmdline_args:
+#       - "regex:-Dcom\.ibm*"
+#       - "app123.jar"
+#   # Exclude python processes with the arg "-foo" OR "-bar" arg. This is another way to do OR. The
+#   # "cmdline_args_match_type: MATCH_ANY" is optional.
+#   - exec_name: python
+#     cmdline_args_match_type: MATCH_ANY
+#     cmdline_args:
+#       - "-foo"
+#       - "-bar"
+#
+ebpfUprobeAttachExclusionRules: []
+
+## ssl key log inclusion rules
+#
+# Configure these rules to inlude processes to do ssl key log based probes instead of default SSL_read/SSL_writed
+#
+# "exec_name" in the config will be a suffix match on the process executable
+#
+# Example with several sample configurations.
+#
+# ebpfSslKeylogIncludeRules:
+#   # Include a ruby process with argument server.rb. This process will use ssl key log probes
+#   - exec_name: ruby
+#     cmdline_args:
+#       - "server.rb"
+#   # Include all ruby process for key log probes
+#   - exec_name: ruby
+ebpfSslKeylogIncludeRules: []
+
+# Use the custom batch_span_processor adapted from the one in opentelemetry go
+# and supports some additional metrics and can also recover from panics that happen
+# during exporting.
+ebpfUseCustomBsp: true
+
+# Custom span attributes to be added to all spans captured by the eBPF agent
+# These will be added as key-value pairs to all spans
+# Example:
+# ebpfCustomSpanAttributes:
+#   environment: production
+#   "region name": "us west region"
+#   "team name": platform
+ebpfCustomSpanAttributes: {}
+
+daemonSetMirroring:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1536Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  sockAddrVolumePath: "/var/log/sock"
+  maxBufferSize: 524288
+  ioTimeout: 60
+  backgroundStatsWait: 300
+  maxQueueDepth: 5000
+  matchSelectors: []
+  matchSelectorsEgress: []
+  matchSelectorsIngressAndEgress: []
+
+# k8s watch api selectors
+# pods and namespaces selectors are just like other match selectors. eg.
+#
+# ebpfWatchMatchSelectors:
+#   enabled: true
+#   podsSelectors:
+#     label_selectors:
+#       - "app.kubernetes.io/name notin (traceable-agent-ebpf,traceable-agent)"
+#     field_selectors:
+#       - "metadata.namespace=traceableai"
+#   namespacesSelectors:
+#     label_selectors:
+#       - "metadata.name notin (traceableai,traceable)"
+#     field_selectors:
+#       - "metadata.name=products"
+#
+# Note: Set-based operators (in, notin, exists) are not supported for field selectors.
+ebpfWatchMatchSelectors:
+  enabled: true
+  podsSelectors:
+  namespacesSelectors:
+
+ebpfPriorityClass:
+  enabled: false
+  name: traceable-ebpf-tracer-priority-class
+  value: 1000000
+  preemptionPolicy: Never
+  globalDefault: false
+
+ebpfUpdateStrategy:
+  enabled: false
+  # Can be "RollingUpdate" or "OnDelete"
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+# process scan period in seconds for ebpf
+ebpfProcFsScanPeriodInSec: 60
+
+ebpfOnly: false
+ebpfReportingEndpoint: ""
+ebpfRemoteEndpoint: ""
+ebpfToTpaTlsEnabled: false
+# TPA CA cert configuration for stand alone TPA client deployments eg standalone ebpf
+# CA Bundle which is the base64 encoding of TPA CA cert file contents.
+tpaCaBundle: ""
+
+# TPA CA as a secret in the same namespace as the ebpf daemonset
+tpaCaCertSecret:
+  secretName: ""
+  caCertFileName: ""
+
+# CA as a file injected into the TA container. This should be the absolute path to the file.
+tpaCaCertFile: ""
+
+# Extra environment variables for traceable-agent aka TPA container.
+#
+# Example config:
+# tpaEnvironmentVariables:
+#   - name: MY_ENV_VAR
+#     value: value1
+#   - name: ANOTHER_ENV_VAR
+#     value: value2
+tpaEnvironmentVariables: []
+
+# Extra environment variables for traceable-ebpf-tracer container.
+#
+# Example config:
+# ebpfEnvironmentVariables:
+#   - name: MY_ENV_VAR
+#     value: value1
+#   - name: ANOTHER_ENV_VAR
+#     value: value2
+ebpfEnvironmentVariables: []
+
+suricataVersion: 7.0.42
+suricataImageName: suricata
+ebpfTracerVersion: 1.24.0
+ebpfTracerImageName: ebpf-tracer
+mirroringAgentVersion: 1.6.2
+
+# This is the TPA version
+imageVersion: ""
+# Node selectors used for the Platform Agent deployment
+#
+# Example config:
+# nodeSelectors:
+#   kubernetes.io/arch: amd64
+nodeSelectors: {}
+nodeAffinityMatchExpressions:
+  - matchExpressions: []
+
+## https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+podAffinity: {}
+# podAffinity:
+#   requiredDuringSchedulingIgnoredDuringExecution:
+#   - labelSelector:
+#       matchExpressions:
+#       - key: security
+#         operator: In
+#         values:
+#         - S1
+#     topologyKey: topology.kubernetes.io/zone
+
+## https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+podAntiAffinity: {}
+# podAntiAffinity:
+#   preferredDuringSchedulingIgnoredDuringExecution:
+#   - weight: 100
+#     podAffinityTerm:
+#       labelSelector:
+#         matchExpressions:
+#         - key: security
+#           operator: In
+#           values:
+#           - S2
+#       topologyKey: topology.kubernetes.io/zone
+
+## https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: []
+# topologySpreadConstraints:
+#     - maxSkew: 1
+#       topologyKey: kubernetes.io/hostname
+#       whenUnsatisfiable: DoNotSchedule
+#       labelSelector:
+#         matchLabels:
+#           app.kubernetes.io/name: traceable-agent
+
+priorityClass:
+  enabled: false
+  name: traceable-agent-priority-class
+  value: 1000000
+  preemptionPolicy: Never
+  globalDefault: false
+
+updateStrategy:
+  enabled: false
+  # Can be "RollingUpdate" or "OnDelete" if TPA is a DaemonSet or "RollingUpdate" or "Recreate" if it is a Deployment.
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetMemoryUtilization: 80
+  targetCpuUtilization: 80
+
+## https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+  minAvailable: ""
+
+# capabilities needed for ebpf in case podsecuritypolicy is enabled
+ebpfAllowedCapabilities:
+  - IPC_LOCK
+  - SYS_ADMIN
+  - SYS_CHROOT
+  - SYS_RESOURCE
+  - SYS_PTRACE
+  - SETFCAP
+
+# capabilities needed for injector in case podsecuritypolicy is enabled
+injectorAllowedCapabilities:
+  - NET_ADMIN
+  - NET_RAW
+
+extensionService:
+  runWithDeployment: false # If set to true will also deploy the extension service as part of the TPA deployment
+  imageVersion: 1.0.0
+  imageName: extension-service
+  port: 6001
+  resources:
+    limits:
+      cpu: 500m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+
+# traceable-agent pod securityContext. This can be overridden using the container securityContext config.
+tpaPodSecurityContext:
+
+# Container securityContext.
+# Set this to true in order to specify a securityContext object for the containers deployed by this helm chart. It will override
+# security context config dependent on other configurations eg tls on port 443 and injector enabled for the traceable-agent image.
+# One will need to specify a securityContext config. You can use "commonContainerSecurityContext" to define a securityContext config
+# that will be used by all the containers. You can also define a custom securityContext for each of the containers.
+useCustomSecurityContext: false
+# This is for traceable-agent container
+securityContext:
+mirroringSecurityContext:
+grpcToHttpContainerSecurityContext:
+extensionServiceSecurityContext:
+ebpfSecurityContext:
+secretsInitSecurityContext:
+commonContainerSecurityContext:
+
+extProcReqBodyMode: "BODY_SEND_MODE_BUFFERED_PARTIAL"
+extProcResBodyMode: "BODY_SEND_MODE_BUFFERED_PARTIAL"
+extProcWebsocketParserConfig:
+  enabled: false
+
+extCapMetricsConfig:
+  enabled: false
+  maxQueueSize: 9216
+  endpointConfig:
+    enabled: false
+    maxEndpoints: 5000
+    logging:
+      enabled: true
+      frequency: 30m
+  logging:
+    enabled: true
+    frequency: 30m
+  exporter:
+    enabled: false
+    exportIntervalMs: 60000
+    exportTimeoutMs: 30000
+
+extCapJavascriptConfig:
+  enabled: false
+  selfSigningSecret: ""
+  traceableCookieExpiry: "30m"
+  traceableJwtExpiry: "10m"
+  captchaConfig:
+    accountSecret: ""
+    verificationEndpoint: ""
+
+# Used to enable TPA -> EnvoyProxy(convert grpc to http) -> user Proxy -> Platform
+# for the server cert/key:
+# kubectl -n traceableai create secret generic server-cert --from-file=server.crt=/path/to/server.crt
+# kubectl -n traceableai create secret generic server-key --from-file=server.key=/path/to/server.key
+grpcToHttp:
+  enabled: false
+  port: 80
+  image: envoyproxy/envoy:v1.32.1
+  platformHost: api.traceable.ai
+  platformPort: 443
+  proxyHost:
+  proxyPort:
+  # If serverCertSecretName & serverKeySecretName are unset then grpcToHttp.port will run over http
+  serverCertSecretName:
+  serverKeySecretName:
+  # base64 encoded username:password
+  proxyCredentialsEncoded:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+
+extCapAuth:
+  enabled: false
+
+extCapEdgeDecisionService:
+  enabled: false
+  endpoint: localhost:62060
+  timeoutMs: 30
+  includePathRegexes: []
+  excludePathRegexes: []
+
+extCapBotService:
+  enabled: false
+  endpoint: http://localhost:63050/traceable/captcha/tpa_request
+  timeoutMs: 30
+  includePathPrefixes:
+    - /traceable/captcha
+
+batchProcessorCreateBatchPerTokenEnabled: false
+# This will enable token based authentication at agentmanager, collector and ext_cap.
+tracerAuth:
+  enabled: false
+
+extCapEvaluateEdsFirst: false
+extCapBlockingSkipClientSpans: true
+
+extCapParserConfig:
+  maxBodySize: 131072 # 128 * 1024 -> 128KB
+  graphql:
+    enabled: false
+
+istioCrdsEnabled: false

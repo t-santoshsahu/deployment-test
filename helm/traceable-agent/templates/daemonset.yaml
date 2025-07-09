@@ -1,0 +1,52 @@
+# The Cert secret, MutatingWebhookConfiguration and Deployment are all in the same file because
+# they both need to reference the same generated cert values.
+{{ if eq .Values.runAsDaemonSet true }}
+{{- $valDict := dict }}
+{{ if eq (include "tlsCertsMode" .) "self_gen" }}
+{{- $altNames := list ( printf "agent.%s" .Release.Namespace ) ( printf "agent.%s.svc" .Release.Namespace ) ( printf "agent-injector.%s" .Release.Namespace ) ( printf "agent-injector.%s.svc" .Release.Namespace ) -}}
+{{- $ca := genCA (printf "%s-ca" .Chart.Name) 3650 -}}
+{{- $cert := genSignedCert .Chart.Name nil $altNames 3650 $ca -}}
+{{- $caBundle := b64enc $ca.Cert  -}}
+{{- $_ := set $valDict "caBundle" $caBundle }}
+{{- $certKey := b64enc $cert.Key }}
+{{- $certCert := b64enc $cert.Cert }}
+{{- $_ := set $valDict "certKey" $certKey }}
+{{- $_ := set $valDict "certCert" $certCert }}
+{{ else }}
+{{- $caBundle := .Values.injector.caBundle -}}
+{{- $_ := set $valDict "caBundle" $caBundle }}
+{{ end }}
+{{ if and (.Values.injectorEnabled) (eq .Values.ebpfOnly false) }}
+{{ include "mutatingWebhookConfigTemplate" (list . $valDict) | indent 0 }}
+{{ end }}
+{{- $restartUuid := uuidv4 }}
+{{ if and (eq (include "addTlsCerts" .) "true") (eq (include "tlsCertsMode" .) "self_gen") (eq .Values.ebpfOnly false) }}
+{{ include "certSecretTemplate" (list . $valDict) | indent 0 }}
+{{ end }}
+{{ if eq .Values.ebpfCaptureEnabled true }}
+{{- $_ := set $valDict "restartUuid" $restartUuid }}
+{{ include "ebpfContainerTemplate" (list . $valDict) | indent 0 }}
+{{ end }}
+{{ if eq .Values.ebpfOnly false }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+{{ if .Values.updateStrategy.enabled }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+{{ if eq .Values.updateStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ .Values.updateStrategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+{{ end }}
+{{ end }}
+{{ include "traceable-agent.containerTemplate" (list . (dict "restartUuid" $restartUuid)) | indent 2 }}
+{{ end }}
+{{ end }}

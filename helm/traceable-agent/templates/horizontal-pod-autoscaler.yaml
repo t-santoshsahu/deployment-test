@@ -1,0 +1,35 @@
+{{ if and ( eq .Values.autoscaling.enabled true) (eq .Values.runAsDaemonSet false) (eq .Values.ebpfOnly false) }}
+{{- if lt ( int ( regexReplaceAll "\\D+" .Capabilities.KubeVersion.Minor "" ) ) 23 }}
+apiVersion: autoscaling/v2beta2
+{{ else }}
+apiVersion: autoscaling/v2
+{{- end }}
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Chart.Name }}
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilization }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCpuUtilization }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+{{ end }}

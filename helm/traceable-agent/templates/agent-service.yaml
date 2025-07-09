@@ -1,0 +1,33 @@
+{{- if eq .Values.ebpfOnly false }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+{{- with .Values.serviceLabels }}
+{{ toYaml . | indent 4}}
+{{- end }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+{{- with .Values.serviceAnnotations }}
+{{ toYaml . | indent 4}}
+{{- end }}
+spec:
+{{- if ne .Values.serviceType "Headless" }}
+  type: {{ .Values.serviceType }}
+{{- else }}
+  clusterIP: None
+{{- end }}
+{{- if and (eq .Values.serviceType "LoadBalancer") (ne .Values.loadBalancerIP "") }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+{{- end }}
+{{- if .Values.serviceExternalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.serviceExternalTrafficPolicy }}
+{{- end }}
+{{ include "traceable-agent.servicePorts" . | indent 2 }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

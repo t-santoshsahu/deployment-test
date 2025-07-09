@@ -1,0 +1,14 @@
+{{ if and .Values.ebpfOnly .Values.tpaCaBundle }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "tpaTlsCaCertForClientsSecretName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+type: Opaque
+data:
+  ca_cert.crt: {{ .Values.tpaCaBundle }}
+{{ end }}

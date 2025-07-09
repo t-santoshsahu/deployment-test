@@ -1,0 +1,50 @@
+{{- if and (.Values.clusterRolesEnabled) (eq .Values.ebpfOnly false) }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Chart.Name }}-cluster-role-{{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+rules:
+{{- if .Values.injectorEnabled }}
+{{- if ne (include "regcredSecretName" .) "" }}
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create"]
+{{- end }}
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "update"]
+{{- end }}
+{{- if .Values.k8sProcessorEnabled }}
+  - apiGroups: ["", "apps"]
+    resources: ["deployments", "nodes", "pods"]
+    verbs: ["get", "watch", "list"]
+{{- end }}
+{{ if eq (include "mirroringEnabled" .) "true" }}
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["list"]
+{{- end }}
+{{ if eq .Values.podSecurityPoliciesEnabled true }}
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["use"]
+    resourceNames: [{{ .Chart.Name }}-pod-security-policy]
+{{- end }}
+{{ if eq .Values.openshiftSCC true }}
+  - apiGroups: ["security.openshift.io"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
+    resourceNames: [{{ .Chart.Name }}-tpa-scc]
+{{ end }}
+{{- end }}

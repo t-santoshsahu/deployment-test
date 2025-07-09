@@ -1,0 +1,22 @@
+{{- if and (eq .Values.istioCrdsEnabled true ) (.Capabilities.APIVersions.Has "security.istio.io/v1beta1/PeerAuthentication") (eq .Values.ebpfOnly false) }}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ .Chart.Name }}-peer-authentication
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  # If traceable-agent is running inside a mesh with STRICT mTLS, allow
+  # permissive connections to traceable-agent, as in a number of cases
+  # things connecting to it may not be inside the mesh, for example
+  # the injector is communicated to from the k8s api server and the zipkin
+  # port is connected to from envoy directly and not routed through mTLS
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: traceable-agent
+  mtls:
+    mode: PERMISSIVE
+{{- end }}

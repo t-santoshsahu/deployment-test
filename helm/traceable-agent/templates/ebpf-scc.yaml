@@ -1,0 +1,43 @@
+{{ if eq .Values.ebpfOpenshiftSCC true }}
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: {{ .Chart.Name }}-scc
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+# allowPrivilegedContainer should be equal to ebpfRunAsPrivileged value since we want the SCC
+# to allow a privileged container to run.
+allowPrivilegedContainer: {{ .Values.ebpfRunAsPrivileged }}
+allowPrivilegeEscalation: {{ .Values.ebpfOpenshiftSccConfig.allowPrivilegeEscalation }}
+allowHostDirVolumePlugin: {{ .Values.ebpfOpenshiftSccConfig.allowHostDirVolumePlugin }}
+allowHostIPC: {{ .Values.ebpfOpenshiftSccConfig.allowHostIPC }}
+allowHostNetwork: {{ .Values.ebpfOpenshiftSccConfig.allowHostNetwork }}
+allowHostPID: {{ .Values.ebpfEnableJavaTlsCapture }}
+allowHostPorts: {{ .Values.ebpfOpenshiftSccConfig.allowHostPorts }}
+readOnlyRootFilesystem: {{ .Values.ebpfOpenshiftSccConfig.readOnlyRootFilesystem }}
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+groups:
+  - system:nodes
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:{{ .Release.Namespace }}:{{ .Values.ebpfServiceAccountName }}
+volumes:
+  - configMap
+  - secret
+  - emptyDir
+  - hostPath
+  - projected
+allowedCapabilities:
+{{- toYaml .Values.ebpfAllowedCapabilities | nindent 2 }}
+requiredDropCapabilities:
+{{- toYaml .Values.ebpfOpenshiftSccConfig.requiredDropCapabilities | nindent 2 }}
+{{ end }}

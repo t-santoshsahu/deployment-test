@@ -1,0 +1,28 @@
+{{- if and (eq .Values.podSecurityPoliciesEnabled true) (eq .Values.ebpfOnly false) }}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ .Chart.Name }}-pod-security-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  privileged: true
+{{ if eq .Values.injectorEnabled true }}
+  allowedCapabilities:
+# injector needs this
+{{- toYaml .Values.injectorAllowedCapabilities | nindent 2 }}
+{{ end }}
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  volumes:
+  - '*'
+{{- end }}

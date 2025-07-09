@@ -1,0 +1,19 @@
+{{- if and .Values.clusterRolesEnabled .Values.ebpfCaptureEnabled }}
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Chart.Name }}-ebpf-cluster-role-binding-{{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.ebpfServiceAccountName }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Chart.Name }}-ebpf-cluster-role-{{ .Release.Namespace }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

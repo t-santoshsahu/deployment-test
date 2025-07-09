@@ -1,0 +1,23 @@
+{{ if and (eq .Values.openshiftSCC true) (eq .Values.ebpfOnly false) }}
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: {{ .Chart.Name }}-tpa-scc
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+allowPrivilegeEscalation: false
+runAsUser:
+  type: MustRunAs
+  uid: {{ .Values.securityContext.runAsUser }}
+seccompProfile:
+  type: RuntimeDefault
+seLinuxContext:
+  type: RunAsAny
+users:
+  - system:serviceaccount:{{ .Release.Namespace }}:{{ .Values.serviceAccountName }}
+requiredDropCapabilities:
+  - ALL
+{{ end }}

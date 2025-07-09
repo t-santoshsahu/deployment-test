@@ -1,0 +1,27 @@
+{{- if and .Values.clusterRolesEnabled .Values.ebpfCaptureEnabled }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Chart.Name }}-ebpf-cluster-role-{{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "watch", "list"]
+{{ if eq .Values.podSecurityPoliciesEnabled true }}
+  - apiGroups: ["policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["use"]
+    resourceNames: [{{ .Chart.Name }}-ebpf-pod-security-policy]
+{{ end }}
+{{ if eq .Values.ebpfOpenshiftSCC true }}
+  - apiGroups: ["security.openshift.io"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
+    resourceNames: [{{ .Chart.Name }}-scc]
+{{ end }}
+{{- end }}

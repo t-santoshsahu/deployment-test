@@ -1,0 +1,644 @@
+{{- if eq .Values.ebpfOnly false }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config-map
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+data:
+  agentconfig.yaml: |
+    global:
+      logging:
+        level: {{ .Values.logLevel }}
+        encoding: "{{ .Values.logEncoding }}"
+        output_paths:
+          - stdout
+        error_output_paths:
+          - stderr
+        encoder_config:
+          time_key: "time"
+          time_encoder: "iso8601"
+          level_key: "level"
+          level_encoder: "uppercase"
+          message_key: "message"
+      server:
+        endpoint: "0.0.0.0:{{ .Values.serverPort }}"
+        keepalive:
+          server_parameters:
+            max_connection_age: {{ .Values.serverPortMaxConnectionAge }}
+      rest_server:
+        endpoint: "0.0.0.0:{{ .Values.restServerPort }}"
+        idle_timeout: {{ .Values.restServerIdleTimeout }}
+        disable_keep_alive: {{ .Values.restServerDisableKeepAlive }}
+      hsl_server:
+        enabled: {{ .Values.hslServer.enabled }}
+        delimiter: {{ .Values.hslServer.delimiter }}
+        server:
+          endpoint: "0.0.0.0:{{ .Values.hslServer.port }}"
+          key_file: {{ .Values.hslServer.keyFile }}
+          cert_file: {{ .Values.hslServer.certFile }}
+          max_queue_size: {{ .Values.hslServer.maxQueueSize }}
+          buffer_size: {{ .Values.hslServer.bufferSize }}
+      apigee_server:
+        enabled: {{ .Values.apigeeServer.enabled }}
+        message_end_token: {{ .Values.apigeeServer.messageEndToken }}
+        server:
+          endpoint: "0.0.0.0:{{ .Values.apigeeServer.server.port }}"
+          key_file: {{ .Values.apigeeServer.server.keyFile }}
+          cert_file: {{ .Values.apigeeServer.server.certFile }}
+          max_queue_size: {{ .Values.apigeeServer.server.maxQueueSize }}
+          buffer_size: {{ .Values.apigeeServer.server.bufferSize }}
+{{- if eq (include "addTlsCerts" .) "true" }}
+      tls_server:
+        endpoint: "0.0.0.0:{{ int ( include "tlsServerPort" . ) }}"
+        key_file: "{{ include "tlsKeyFileName" . }}"
+        cert_file: "{{ include "tlsCertFileName" . }}"
+        root_cert_file: "{{ include "tlsRootCaCertFileName" . }}"
+        idle_timeout: {{ .Values.tlsServerIdleTimeout }}
+        disable_keep_alive: {{ .Values.tlsServerDisableKeepAlive }}
+{{- end }}
+      http_reverse_proxy_enabled: {{ .Values.httpReverseProxyEnabled }}
+      tracer_auth:
+        enabled: {{ .Values.tracerAuth.enabled }}
+      pprof_server:
+        enabled: {{ .Values.pprofServer.enabled }}
+        endpoint: {{ .Values.pprofServer.endpoint }}
+      remote:
+        endpoint: {{ .Values.endpoint }}:{{ .Values.endpointPort }}
+        secure: {{ .Values.secure }}
+        ca_cert_file: {{ include "RemoteTlsCaCertFileName" . }}
+        client_cert_file: {{ include "mtlsHelper.ClientCertFileName" . }}
+        client_key_file: {{ include "mtlsHelper.ClientKeyFileName" . }}
+        grpc_max_call_recv_msg_size: {{ .Values.grpcMaxCallRecvMsgSize }}
+        max_tokens: {{ .Values.remoteMaxTokens }}
+{{- if .Values.refreshTokenFile }}
+        refresh_token_file: {{ .Values.refreshTokenFile }}
+{{- else if eq (include "useExternalTokenSecret" .) "true" }}
+        refresh_token_file: /conf/token/refresh-token
+{{- end }}
+      telemetry:
+        service_name: traceable-agent
+        propagation_formats:
+          - B3
+          - TRACECONTEXT
+        reporting:
+          endpoint:  {{ include "telemetryReportingEndpoint" . }}
+          trace_reporter_type: "OTLP"
+        metrics:
+          enabled: {{ .Values.metrics.enabled }}
+        internal_spans:
+          enabled: {{ .Values.internalSpans.enabled }}
+          logs_as_span_events: {{ .Values.internalSpans.logsAsSpanEvents }}
+          logs_span_ticker_period: {{ .Values.internalSpans.logsSpanTickerPeriod }}
+          logs_queue_size: {{ .Values.internalSpans.logsQueueSize }}
+        data_capture: {{ .Values.telemetryDataCapture }}
+      persistence_directory: "/conf/persistence/"
+    collector:
+      enabled: {{ .Values.collectorEnabled }}
+      agent_manager_endpoint: "localhost:{{ .Values.serverPort }}"
+{{- with .Values.remoteConfiguredProcessors }}
+      remote_configured_processors:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+      regex_match_cache:
+        enabled: {{ .Values.collector.regexMatchCache.enabled }}
+        size: {{ .Values.collector.regexMatchCache.size }}
+      negative_match_cache:
+        enabled: {{ .Values.collector.negativeMatchCache.enabled }}
+        body_params_cache_size: {{ .Values.collector.negativeMatchCache.bodyParamsCacheSize }}
+        query_params_cache_size: {{ .Values.collector.negativeMatchCache.queryParamsCacheSize }}
+        headers_cache_size: {{ .Values.collector.negativeMatchCache.headersCacheSize }}
+        cookies_cache_size: {{ .Values.collector.negativeMatchCache.cookiesCacheSize }}
+        others_cache_size: {{ .Values.collector.negativeMatchCache.othersCacheSize }}
+      multipart_max_file_size: {{ .Values.collector.multipartMaxFileSize }}
+      skip_setting_grpc_logger: {{ .Values.collector.skipSettingGrpcLogger }}
+      grpc_max_call_recv_msg_size: {{ .Values.collector.grpcMaxCallRecvMsgSize }}
+      config:
+        extensions:
+          traceable_tokenauth/server:
+            enabled: {{ .Values.tracerAuth.enabled }}
+          health_check:
+            endpoint: "127.0.0.1:{{ .Values.collector.ports.health_check }}"
+{{- if .Values.persistentQueueEnabled }}
+          file_storage:
+            directory: "/conf/persistence/"
+            timeout: 1s
+            compaction:
+              on_start: true
+              on_rebound: true
+              directory: /conf/persistence/
+              max_transaction_size: 65_536
+{{- end }}
+
+        connectors:
+          traceable_pipeline_manager: {}
+
+        receivers:
+{{- if .Values.collector.receivers.otlp.enabled }}
+          otlp:
+            protocols:
+              grpc:
+                include_metadata: true
+                max_recv_msg_size_mib: {{ .Values.collector.receivers.otlp.maxRecvMsgSizeMib }}
+                endpoint: "127.0.0.1:{{ .Values.collector.ports.opentelemetry}}"
+                auth:
+                  authenticator: traceable_tokenauth/server
+                keepalive:
+                  server_parameters:
+                    max_connection_age: {{ .Values.collector.receivers.otlp.maxConnectionAge }}
+              http:
+                include_metadata: true
+                endpoint: "127.0.0.1:{{ .Values.collector.ports.opentelemetryHttp}}"
+                auth:
+                  authenticator: traceable_tokenauth/server
+{{- end }}
+
+          # Collect own metrics
+          prometheus:
+            config:
+              scrape_configs:
+                - job_name: "traceable-collector"
+                  scrape_interval: 10s
+                  static_configs:
+                    - targets: ["127.0.0.1:{{ .Values.collector.ports.prometheus_receiver}}"]
+
+{{- if .Values.collector.receivers.zipkin.enabled }}
+          zipkin:
+            endpoint: "127.0.0.1:{{ .Values.collector.ports.zipkin }}"
+            auth:
+              authenticator: traceable_tokenauth/server
+{{- end }}
+
+        processors:
+          traceable_dataparser:
+          traceable_attributes:
+          traceable_metadata:
+          traceable_modsec:
+          traceable_dataclassification:
+{{- with .Values.spanRemoverProcessor }}
+          traceable_spanremover:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.bareSpanConverterProcessor }}
+          traceable_barespanconverter:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.ipResolutionProcessor }}
+          traceable_ipresolutionprocessor:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+          batch:
+            timeout: {{ .Values.collector.batch.timeout }}
+            send_batch_size: {{ .Values.collector.batch.sendBatchSize }}
+            send_batch_max_size: {{ .Values.collector.batch.sendBatchMaxSize }}
+{{- if .Values.batchProcessorCreateBatchPerTokenEnabled }}
+            metadata_keys:
+              - traceableai-agent-token
+{{- end }}
+          transform/environment:
+            error_mode: ignore
+{{- with .Values.protoprocessor }}
+          traceable_protoprocessor:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.base64DecoderProcessor }}
+          traceable_base64decoderprocessor:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- if .Values.serviceNamerProcessorEnabled }}
+          traceable_servicenamerprocessor:
+{{- end }}
+{{- if .Values.k8sProcessorEnabled }}
+          k8sattributes:
+            passthrough: false
+            auth_type: "serviceAccount"
+            extract:
+              metadata:
+                - k8s.pod.name
+                - k8s.pod.uid
+                - k8s.deployment.name
+                - k8s.namespace.name
+                - k8s.node.name
+                - k8s.pod.start_time
+{{- end }}
+{{- if .Values.tracesBufferingProcessorEnabled }}
+          traceable_traces_buffer:
+            buffer_capacity: {{ .Values.tracesBufferingProcessor.bufferCapacity }}
+            no_of_workers: {{ include "tracesBufferingNoOfWorkers" . }}
+            send_buffer_overflow_spans: {{ .Values.tracesBufferingProcessor.sendBufferOverFlowSpans }}
+{{- end}}
+{{- with .Values.metricsRemoverProcessor }}
+          traceable_metricremover:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.filterInternalSpansProcessor }}
+          filter/internal_spans:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.filterExternalSpansProcessor }}
+          filter/external_spans:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- with .Values.collector.additionalProcessors }}
+            {{- toYaml . | nindent 10 }}
+{{- end }}
+
+        exporters:
+          otlp:
+{{- if ne .Values.collector.exporters.otlp.compression "" }}
+            compression: {{ .Values.collector.exporters.otlp.compression }}
+{{- end }}
+{{- if .Values.persistentQueueEnabled }}
+            sending_queue:
+              storage: file_storage
+{{- end }}
+{{- if .Values.collector.exporters.prometheus.enabled }}
+          prometheus:
+            endpoint: "0.0.0.0:{{ .Values.collector.ports.prometheus }}"
+            namespace: traceableai
+{{- end }}
+{{- with .Values.collector.additionalExporters }}
+            {{- toYaml . | nindent 10 }}
+{{- end }}
+
+        service:
+          telemetry:
+            resource: {}
+            metrics:
+              address: "127.0.0.1:{{ .Values.collector.ports.prometheus_receiver }}"
+          pipelines:
+            traces/entry:
+              receivers: {{ template "collectorTracesReceivers" . }}
+              processors:
+                [
+                  transform/environment,
+                  filter/external_spans,
+                ]
+              exporters: [traceable_pipeline_manager]
+            traces:
+              receivers: [traceable_pipeline_manager]
+              processors: {{ template "collectorProcessors" . }}
+              exporters: {{ .Values.collector.service.pipelines.traces.exporters }}
+            traces/internal_spans:
+              receivers: {{ template "collectorTracesReceivers" . }}
+              processors: {{ template "collectorInternalSpansProcessors" .}}
+              exporters: {{ .Values.collector.service.pipelines.traces.exporters }}
+            metrics:
+              receivers: {{ template "collectorMetricsReceivers" . }}
+              processors: [transform/environment, traceable_metricremover, batch]
+              exporters: {{ .Values.collector.service.pipelines.metrics.exporters }}
+{{- with .Values.collector.additionalPipelines }}
+              {{- toYaml . | nindent 12 }}
+{{- end }}
+{{- if .Values.persistentQueueEnabled }}
+          extensions: [traceable_tokenauth/server, health_check, file_storage]
+{{- else }}
+          extensions: [traceable_tokenauth/server, health_check]
+{{- end }}
+    agent_manager:
+      enabled: {{ .Values.agentManagerEnabled }}
+    ext_cap:
+      enabled: {{ .Values.extCapEnabled }}
+      service_name: {{ .Values.extCapServiceName }}
+      max_body_size: {{ .Values.maxBodySize }}
+      max_span_depth: {{ .Values.maxSpanDepth }}
+      timeout_ms: {{ .Values.extCapTimeoutMs }}
+      allowed_content_types:
+{{- range $_, $value := .Values.allowedContentTypes }}
+        - {{ $value }}
+{{- end }}
+      blocking_config:
+        enabled: {{ include "blockingEnabled" . }}
+        modsecurity:
+          enabled: {{ .Values.modsecurityEnabled }}
+        evaluate_body: {{ .Values.evaluateBody }}
+        skip_client_spans: {{ .Values.extCapBlockingSkipClientSpans }}
+        skip_internal_request: {{ .Values.skipInternalRequest }}
+        response_status_code: {{ .Values.blockingStatusCode }}
+        response_message: {{ .Values.blockingMessage }}
+        region_blocking:
+          enabled: {{ .Values.regionBlockingEnabled }}
+        edge_decision_service:
+          enabled: {{ .Values.extCapEdgeDecisionService.enabled }}
+          endpoint: {{ .Values.extCapEdgeDecisionService.endpoint }}
+          timeout_ms: {{ .Values.extCapEdgeDecisionService.timeoutMs }}
+{{- if .Values.extCapEdgeDecisionService.includePathRegexes }}
+          include_path_regexes:
+{{- toYaml .Values.extCapEdgeDecisionService.includePathRegexes | nindent 12 }}
+{{- end }}
+{{- if .Values.extCapEdgeDecisionService.includePathRegexes }}
+          exclude_path_regexes:
+{{- toYaml .Values.extCapEdgeDecisionService.excludePathRegexes | nindent 12 }}
+{{- end }}
+        evaluate_eds_first: {{ .Values.extCapEvaluateEdsFirst }}
+      remote_config:
+        enabled: {{ .Values.remoteConfigEnabled }}
+        endpoint: localhost:{{ .Values.serverPort }}
+        poll_period_seconds: {{ .Values.remoteConfigPollPeriod }}
+        grpc_max_call_recv_msg_size: {{ .Values.remoteConfigGrpcMaxCallRecvMsgSize }}
+      sampling:
+        enabled: {{ .Values.samplingEnabled }}
+      # libtraceable logging config for ext_cap
+      logging:
+        log_mode: LOG_MODE_STDOUT
+        log_level: {{ .Values.logLevelInternal }}
+      log_level: {{ .Values.injector.logLevel }}
+      metrics_config:
+        enabled: {{ .Values.extCapMetricsConfig.enabled }}
+        max_queue_size: {{ .Values.extCapMetricsConfig.maxQueueSize }}
+        endpoint_config:
+          enabled: {{ .Values.extCapMetricsConfig.endpointConfig.enabled }}
+          max_endpoints: {{ .Values.extCapMetricsConfig.endpointConfig.maxEndpoints }}
+          logging:
+            enabled: {{ .Values.extCapMetricsConfig.endpointConfig.logging.enabled }}
+            frequency: {{ .Values.extCapMetricsConfig.endpointConfig.logging.frequency }}
+        logging:
+          enabled: {{ .Values.extCapMetricsConfig.logging.enabled }}
+          frequency: {{ .Values.extCapMetricsConfig.logging.frequency }}
+        exporter:
+          enabled: {{ .Values.extCapMetricsConfig.exporter.enabled }}
+          export_interval_ms: {{ .Values.extCapMetricsConfig.exporter.exportIntervalMs }}
+          export_timeout_ms: {{ .Values.extCapMetricsConfig.exporter.exportTimeoutMs }}
+      ext_proc:
+        request_body_mode: {{ .Values.extProcReqBodyMode }}
+        response_body_mode: {{ .Values.extProcResBodyMode }}
+        websocket_parser_config:
+          enabled: {{ .Values.extProcWebsocketParserConfig.enabled }}
+      auth:
+        enabled: {{ .Values.extCapAuth.enabled }}
+      bot_service:
+        enabled: {{ .Values.extCapBotService.enabled }}
+        endpoint: {{ .Values.extCapBotService.endpoint }}
+        timeout_ms: {{ .Values.extCapBotService.timeoutMs }}
+{{- if .Values.extCapBotService.includePathPrefixes }}
+        include_path_prefixes:
+{{- toYaml .Values.extCapBotService.includePathPrefixes | nindent 10 }}
+{{- end }}
+      parser_config:
+        max_body_size: {{ .Values.extCapParserConfig.maxBodySize }}
+        graphql:
+          enabled: {{ .Values.extCapParserConfig.graphql.enabled }}
+{{- if eq (include "mirroringEnabled" .) "true" }}
+      mirror:
+        enabled: {{ include "mirroringEnabled" . }}
+        # Path to Unix Domain Socket
+        sock_addr: "{{ .Values.daemonSetMirroring.sockAddrVolumePath }}/eve.json"
+        # Maximum buffer size to read
+        max_buffer_size: {{ .Values.daemonSetMirroring.maxBufferSize }}
+        # timeout after 60 seconds (Unix Domain Socket)
+        io_timeout: {{ .Values.daemonSetMirroring.ioTimeout }}
+        # Stats job runs this often
+        background_stats_wait: {{ .Values.daemonSetMirroring.backgroundStatsWait }}
+        # maximum size of the in-memory jsondatagram queue
+        max_queue_depth: {{ .Values.daemonSetMirroring.maxQueueDepth }}
+        pod_mirroring_enabled: {{ include "podMirroringEnabled" . }}
+
+        daemon_set_mirroring_enabled: {{ include "daemonSetMirroringEnabled" . }}
+        mirror_all_namespaces: {{ include "daemonSetMirrorAllNamespaces" . }}
+{{- if .Values.daemonSetMirroring.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.daemonSetMirroring.matchSelectors | nindent 10 }}
+{{- end }}
+{{- if .Values.daemonSetMirroring.matchSelectorsEgress }}
+        match_selectors_egress:
+{{- toYaml .Values.daemonSetMirroring.matchSelectorsEgress | nindent 10 }}
+{{- end }}
+{{- if .Values.daemonSetMirroring.matchSelectorsIngressAndEgress }}
+        match_selectors_ingress_and_egress:
+{{- toYaml .Values.daemonSetMirroring.matchSelectorsIngressAndEgress | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectors }}
+        pod_mirroring_match_selectors:
+{{- toYaml .Values.injector.mirror.matchSelectors | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectorsEgress }}
+        pod_mirroring_match_selectors_egress:
+{{- toYaml .Values.injector.mirror.matchSelectorsEgress | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectorsIngressAndEgress }}
+        pod_mirroring_match_selectors_ingress_and_egress:
+{{- toYaml .Values.injector.mirror.matchSelectorsIngressAndEgress | nindent 10 }}
+{{- end }}
+{{- end }}
+    injector:
+      enabled: {{ .Values.injectorEnabled }}
+      k8s_incluster_client: true
+      regcred_template: "/conf/injector/templates/regcred-secrets.tmpl.yaml"
+      container_resources_template: "/conf/injector/templates/resources.tmpl.yaml"
+      telemetry:
+{{- if .Values.injector.propagationFormats }}
+        propagation_formats:
+{{- toYaml .Values.injector.propagationFormats | nindent 10 }}
+{{- end }}
+        reporting:
+          endpoint: {{ include "injecteeReportingEndpoint" . }}
+          trace_reporter_type: {{ .Values.injector.traceReporterType }}
+          enable_grpc_loadbalancing: {{ .Values.injector.enableGrpcLoadbalancing }}
+{{- if .Values.injector.captureContentType }}
+        capture_content_type:
+{{- toYaml .Values.injector.captureContentType | nindent 10 }}
+{{- end }}
+      max_body_size: {{ .Values.maxBodySize }}
+      allowed_content_types:
+{{- range $_, $value := .Values.allowedContentTypes }}
+        - {{ $value }}
+{{- end }}
+      blocking_config:
+        enabled: {{ .Values.injector.blockingConfig.enabled }}
+        modsecurity:
+          enabled: {{ .Values.injector.blockingConfig.modsecurity.enabled }}
+        evaluate_body: {{ .Values.injector.blockingConfig.evaluate_body }}
+        skip_internal_request: {{ .Values.injector.blockingConfig.skip_internal_request }}
+        response_status_code: {{ .Values.injector.blockingConfig.blockingStatusCode }}
+        response_message:
+{{- toYaml .Values.injector.blockingConfig.blockingMessage | nindent 10 }}
+        response_content_type: {{ .Values.injector.blockingConfig.blockingContentType }}
+        region_blocking:
+          enabled: {{ .Values.injector.blockingConfig.region_blocking.enabled }}
+        edge_decision_service:
+          enabled: {{ .Values.injector.blockingConfig.edge_decision_service.enabled }}
+          endpoint: {{ .Values.injector.blockingConfig.edge_decision_service.endpoint }}
+          timeoutMs: {{ .Values.injector.blockingConfig.edge_decision_service.timeoutMs }}
+{{- if .Values.injector.blockingConfig.edge_decision_service.includePathRegexes }}
+          include_path_regexes:
+{{- toYaml .Values.injector.blockingConfig.edge_decision_service.includePathRegexes | nindent 12 }}
+{{- end }}
+{{- if .Values.injector.blockingConfig.edge_decision_service.excludePathRegexes }}
+          exclude_path_regexes:
+{{- toYaml .Values.injector.blockingConfig.edge_decision_service.excludePathRegexes | nindent 12 }}
+{{- end }}
+        evaluate_eds_first: {{ .Values.injector.blockingConfig.evaluateEdsFirst }}
+      remote_config:
+        enabled: {{ .Values.injector.remoteConfig.enabled }}
+        endpoint: "{{ include "injecteeRemoteConfigEndpoint" . }}"
+        poll_period_seconds: {{ .Values.injector.remoteConfig.poll_period_seconds }}
+        grpc_max_call_recv_msg_size: {{ .Values.injector.remoteConfig.grpc_max_call_recv_msg_size }}
+      sampling:
+        enabled: {{ .Values.injector.sampling.enabled }}
+      # libtraceable log level in the injected tme container
+      log_level: {{ .Values.injector.logLevel }}
+      metrics_config:
+        enabled: {{ .Values.injector.metricsConfig.enabled }}
+        max_queue_size: {{ .Values.injector.metricsConfig.maxQueueSize }}
+        endpoint_config:
+          enabled: {{ .Values.injector.metricsConfig.endpointConfig.enabled }}
+          max_endpoints: {{ .Values.injector.metricsConfig.endpointConfig.maxEndpoints }}
+          logging:
+            enabled: {{ .Values.injector.metricsConfig.endpointConfig.logging.enabled }}
+            frequency: {{ .Values.injector.metricsConfig.endpointConfig.logging.frequency }}
+        logging:
+          enabled: {{ .Values.injector.metricsConfig.logging.enabled }}
+          frequency: {{ .Values.injector.metricsConfig.logging.frequency }}
+        exporter:
+          enabled: {{ .Values.injector.metricsConfig.exporter.enabled }}
+          export_interval_ms: {{ .Values.injector.metricsConfig.exporter.exportIntervalMs }}
+          export_timeout_ms: {{ .Values.injector.metricsConfig.exporter.exportTimeoutMs }}
+      bot_service:
+        enabled: {{ .Values.injector.botServiceConfig.enabled }}
+        endpoint: {{ .Values.injector.botServiceConfig.endpoint }}
+        timeout_ms: {{ .Values.injector.botServiceConfig.timeout_ms }}
+{{- if .Values.injector.botServiceConfig.includePathPrefixes }}
+        include_path_prefixes:
+{{- toYaml .Values.injector.botServiceConfig.includePathPrefixes | nindent 10 }}
+{{- end }}
+      parser_config:
+        max_body_size: {{ .Values.injector.parserConfig.maxBodySize }}
+        graphql:
+          enabled: {{ .Values.injector.parserConfig.graphql.enabled }}
+      images_repository: {{ include "imageRegistry" . }}
+      tls_enabled: {{ .Values.tlsEnabled }}
+      servicename_with_namespace: {{ .Values.injector.servicenameWithNamespace }}
+      pprof_server:
+        enabled: {{ .Values.injector.pprofServer.enabled }}
+        endpoint: {{ .Values.injector.pprofServer.endpoint }}
+      java:
+        image_version: {{ .Values.injector.java.imageVersion }}
+        image_name: {{ .Values.injector.java.imageName }}
+        init_container_resources:
+{{- toYaml .Values.injector.java.initContainerResources | nindent 10 }}
+{{- if .Values.injector.java.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.java.matchSelectors | nindent 10 }}
+{{- end }}
+        filter_impl: {{ .Values.injector.java.filterImpl }}
+      nginx:
+        image_version: {{ include "injecteeNginxImageVersion" . }}
+        image_name: {{ .Values.injector.nginx.imageName }}
+        init_container_resources:
+{{- toYaml .Values.injector.nginx.initContainerResources | nindent 10 }}
+{{- if .Values.injector.nginx.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.nginx.matchSelectors | nindent 10 }}
+{{- end }}
+        config_map_name: {{ .Values.injector.nginx.configMapName }}
+        container_name: {{ .Values.injector.nginx.containerName }}
+      nginx_cpp:
+        agent_version: {{ .Values.injector.nginxCpp.agentVersion }}
+        image_version: {{ .Values.injector.nginxCpp.imageVersion }}
+        image_name: {{ .Values.injector.nginxCpp.imageName }}
+        config_map_name: {{ .Values.injector.nginxCpp.configMapName }}
+        container_name: {{ .Values.injector.nginxCpp.containerName }}
+        init_container_resources:
+{{- toYaml .Values.injector.nginxCpp.initContainerResources | nindent 10 }}
+{{- if .Values.injector.nginxCpp.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.nginxCpp.matchSelectors | nindent 10 }}
+{{- end }}
+        config:
+          # make sure to add quotes around any value which resolves to on/off. Otherwise, they'll be converted to true/false
+          # ref: https://github.com/helm/helm/issues/5497
+          service_name: "{{ .Values.injector.nginxCpp.config.serviceName }}"
+          collector_host: {{ printf "agent.%s" .Release.Namespace }}
+          collector_port: {{ include "injecteeNginxReportingPort" . }}
+          config_endpoint: {{ include "injecteeRemoteConfigEndpoint" . }}
+          config_polling_period: {{ .Values.injector.nginxCpp.config.configPollPeriodSeconds }}
+          blocking: "{{ .Values.injector.nginxCpp.config.blocking }}"
+          blocking_status_code: {{ .Values.injector.nginxCpp.config.blockingStatusCode }}
+          blocking_skip_internal_request: "{{ .Values.injector.nginxCpp.config.blockingSkipInternalRequest }}"
+          sampling: "{{ .Values.injector.nginxCpp.config.sampling }}"
+          log_mode: "LOG_MODE_STDOUT"
+          log_level: "{{ .Values.injector.nginxCpp.config.logLevel }}"
+          metrics: "{{ .Values.injector.nginxCpp.config.metrics }}"
+          metrics_log: "{{ .Values.injector.nginxCpp.config.metricsLog }}"
+          metrics_log_frequency: "{{ .Values.injector.nginxCpp.config.metricsLogFrequency }}"
+          endpoint_metrics: "{{ .Values.injector.nginxCpp.config.endpointMetrics }}"
+          endpoint_metrics_log: "{{ .Values.injector.nginxCpp.config.endpointMetricsLog }}"
+          endpoint_metrics_log_frequency: "{{ .Values.injector.nginxCpp.config.endpointMetricsLogFrequency }}"
+          endpoint_metrics_max_endpoints: {{ .Values.injector.nginxCpp.config.endpointMetricsMaxEndpoints }}
+          capture_content_types:
+{{- range $_, $value := .Values.injector.nginxCpp.config.captureContentTypes }}
+          - {{ $value }}
+{{- end }}
+      tme:
+        image_version: {{ include "injecteeTMEImageVersion" . }}
+        image_name: {{ .Values.injector.tme.imageName }}
+        container_template: "/conf/injector/templates/tme-container.tmpl.yaml"
+        config_template: "/conf/injector/templates/tme-config.tmpl.yaml"
+        rest_idle_timeout: {{ .Values.injectorTmeRestServerIdleTimeout }}
+        rest_disable_keep_alive: {{ .Values.injectorTmeRestServerDisableKeepAlive }}
+        resources:
+{{- toYaml .Values.injector.tme.resources | nindent 10 }}
+        disable_outbound_port_exclude_anno: {{ .Values.injector.tme.disableOutboundPortExcludeAnno }}
+{{- if .Values.injector.tme.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.tme.matchSelectors | nindent 10 }}
+{{- end }}
+      mirror:
+        image_version: {{ .Values.injector.mirror.imageVersion }}
+        image_name: {{ .Values.injector.mirror.imageName }}
+        resources:
+{{- toYaml .Values.injector.mirror.resources | nindent 10 }}
+        mtu: {{ .Values.injector.mirror.mtu }}
+{{- if .Values.injector.tme.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.tme.matchSelectors | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.mirror.matchSelectors | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectorsEgress }}
+        match_selectors_egress:
+{{- toYaml .Values.injector.mirror.matchSelectorsEgress | nindent 10 }}
+{{- end }}
+{{- if .Values.injector.mirror.matchSelectors }}
+        match_selectors_ingress_and_egress:
+{{- toYaml .Values.injector.mirror.matchSelectorsIngressAndEgress | nindent 10 }}
+{{- end }}
+
+      haproxy:
+        image_version: {{ include "injecteeHaproxyImageVersion" . }}
+        image_name: {{ .Values.injector.haproxy.imageName }}
+        init_container_resources:
+{{- toYaml .Values.injector.haproxy.initContainerResources | nindent 10 }}
+        port: {{ .Values.injector.haproxy.port }}
+        request_capture_message_name: "traceableai-reqcap"
+        response_capture_message_name: "traceableai-rescap"
+        snippets_path: "/conf/injector/templates/haproxy"
+{{- if .Values.injector.haproxy.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.injector.haproxy.matchSelectors | nindent 10 }}
+        close_server_on_connection_error: {{ .Values.injector.haproxy.closeServerOnConnectionError }}
+{{- end }}
+      wasm:
+        image_version: {{ include "injecteeWasmImageVersion" . }}
+        image_name: {{ .Values.injector.wasm.imageName }}
+      ext_proc:
+        request_body_mode: {{ .Values.injector.extProc.requestBodyProcessingMode }}
+        response_body_mode: {{ .Values.injector.extProc.responseBodyProcessingMode }}
+        websocket_parser_config:
+          enabled: {{ .Values.injector.extProc.websocketParserConfig.enabled }}
+      extension_service:
+        image_version: {{ .Values.extensionService.imageVersion }}
+        image_name: {{ .Values.extensionService.imageName }}
+        port: {{ .Values.extensionService.port }}
+        resources:
+{{- toYaml .Values.extensionService.resources | nindent 10 }}
+{{- if .Values.extensionService.matchSelectors }}
+        match_selectors:
+{{- toYaml .Values.extensionService.matchSelectors | nindent 10 }}
+{{- end }}
+{{- end }}

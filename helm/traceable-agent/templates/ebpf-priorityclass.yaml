@@ -1,0 +1,15 @@
+{{ if and .Values.ebpfCaptureEnabled .Values.ebpfPriorityClass.enabled  }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.ebpfPriorityClass.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+value: {{ .Values.ebpfPriorityClass.value }}
+preemptionPolicy: {{ .Values.ebpfPriorityClass.preemptionPolicy }}
+globalDefault: {{ .Values.ebpfPriorityClass.globalDefault }}
+description: "EBPF tracer pod priority class."
+{{ end }}

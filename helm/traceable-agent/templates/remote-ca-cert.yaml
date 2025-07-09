@@ -1,0 +1,14 @@
+{{ if and .Values.remoteCaBundle (eq .Values.ebpfOnly false) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "remoteTlsCaCertSecretName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+type: Opaque
+data:
+  ca_cert.crt: {{ .Values.remoteCaBundle }}
+{{ end }}

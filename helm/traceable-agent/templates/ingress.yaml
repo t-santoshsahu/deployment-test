@@ -1,0 +1,58 @@
+{{- if and (eq .Values.ingress.enabled true) (eq .Values.ebpfOnly false) }}
+{{ $v1 := semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+
+{{- if eq $v1 true }}
+apiVersion: networking.k8s.io/v1
+{{ else }}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.http.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- end }}
+  rules:
+    {{- $domain := .Values.ingress.domain }}
+    {{- $release := .Release }}
+    {{- $chart := .Chart }}
+  - host: zipkin.{{ $domain | default (printf "%s.%s.svc.cluster.local" $chart.Name $release.Namespace) }}
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            {{- if eq $v1 true }}
+            service:
+              name: agent
+              port:
+                number: {{ .Values.collector.ports.zipkin }}
+            {{- else }}
+            serviceName: agent
+            servicePort: {{ .Values.collector.ports.zipkin }}
+            {{- end }}
+  - host: agent-rest.{{ $domain | default (printf "%s.%s.svc.cluster.local" $chart.Name $release.Namespace) }}
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            {{- if eq $v1 true }}
+            service:
+              name: agent
+              port:
+                number: {{ .Values.restServerPort }}
+            {{- else }}
+            serviceName: agent
+            servicePort: {{ .Values.restServerPort }}
+            {{- end }}
+{{- end }}

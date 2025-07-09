@@ -1,0 +1,15 @@
+{{ if and (eq .Values.priorityClass.enabled true) (eq .Values.ebpfOnly false) }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+value: {{ .Values.priorityClass.value }}
+preemptionPolicy: {{ .Values.priorityClass.preemptionPolicy }}
+globalDefault: {{ .Values.priorityClass.globalDefault }}
+description: "traceable-agent pod priority class."
+{{ end }}

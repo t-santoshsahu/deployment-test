@@ -1,0 +1,23 @@
+{{- $tlsServerPort := int ( include "tlsServerPort" . ) }}
+{{- $injectorServiceHostName := include "injectorServiceHostName" . }}
+{{- if and (.Values.injectorEnabled) (eq .Values.serviceType "Headless") ( eq .Values.ebpfOnly false) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $injectorServiceHostName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "traceableai.labels" . | indent 4 }}
+  annotations:
+{{ include "traceableai.annotations" . | indent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $tlsServerPort }}
+      name: https-agent
+      protocol: TCP
+      targetPort: {{ $tlsServerPort }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

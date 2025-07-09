@@ -1,0 +1,15 @@
+{{ if and .Values.remoteClientCert .Values.remoteClientKey (eq .Values.ebpfOnly false) }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "mtlsHelper.ClientTlsCertKeySecretName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{ include "traceableai.labels" . | nindent 4 }}
+  annotations:
+    {{ include "traceableai.annotations" . | nindent 4 }}
+type: Opaque
+data:
+  client-cert.pem: {{ .Values.remoteClientCert }}
+  client-key.pem: {{ .Values.remoteClientKey }}
+{{ end }}
